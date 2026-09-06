@@ -20,7 +20,6 @@ function getBrowserExecutablePath() {
     ];
     for (const p of linuxPaths) {
       if (fs.existsSync(p)) {
-        console.log(`[WhatsApp] Using Linux browser: ${p}`);
         return p;
       }
     }
@@ -35,7 +34,6 @@ function getBrowserExecutablePath() {
   ];
   for (const p of windowsPaths) {
     if (fs.existsSync(p)) {
-      console.log(`[WhatsApp] Using Windows browser: ${p}`);
       return p;
     }
   }
@@ -68,7 +66,7 @@ function formatMessage(update, channelCategory) {
 }
 
 /**
- * Initializes and maintains the WhatsApp Web Client with LocalAuth session persistence
+ * Initializes WhatsApp Web Client with Ultra-Low Memory Profile (<250MB for Free Cloud)
  */
 function initWhatsApp(onReadyCallback) {
   if (clientInstance) {
@@ -92,19 +90,23 @@ function initWhatsApp(onReadyCallback) {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-extensions',
+        '--disable-default-apps',
+        '--disable-sync',
+        '--disable-background-networking',
+        '--disable-translate',
+        '--hide-scrollbars',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--js-flags="--max-old-space-size=256"'
       ]
     }
   });
 
   clientInstance.on('qr', (qr) => {
     currentQrCode = qr;
-    console.log('\n======================================================');
-    console.log('👉 SCAN THIS QR CODE WITH YOUR WHATSAPP TO LOG IN:');
-    console.log('   (WhatsApp > Settings > Linked Devices > Link a Device)');
-    console.log('   (Or open /qr on your Render website to scan via browser)');
-    console.log('======================================================\n');
+    console.log('\n[WhatsApp] New QR Code Generated for Web & Terminal:');
     qrcodeTerminal.generate(qr, { small: true });
   });
 
