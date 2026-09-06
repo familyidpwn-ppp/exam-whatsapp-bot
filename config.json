@@ -3,6 +3,13 @@
   "website_url": "https://www.sarkariresult.com",
   "channels": [
     {
+      "category": "All Government Vacancy Updates",
+      "channel_id": "0029VbDy4Zr1NCrMJCEf3x3r",
+      "channel_name": "All Government Vacancy Updates",
+      "all_updates": true,
+      "name_keywords": ["*"]
+    },
+    {
       "category": "RPSC & RSSB",
       "channel_id": "120363425195090352@newsletter",
       "channel_name": "RPSC And Rssb News And Updates",

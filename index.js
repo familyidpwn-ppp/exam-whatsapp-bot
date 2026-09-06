@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { initWhatsApp, sendToDestination, formatMessage, isReady } = require('./whatsapp');
+const { initWhatsApp, sendToDestination, formatMessage, resolveNewsletterInvite, isReady } = require('./whatsapp');
 const { fetchExamUpdates, extractOfficialGovLink } = require('./scraper');
 const { isUpdateNew, markUpdateAsSeen, loadHistory } = require('./database');
 const { startServer } = require('./server');
@@ -29,7 +29,11 @@ function routeUpdateToChannels(update, channels) {
   const matchedChannels = [];
 
   for (const channel of channels) {
-    const isMatch = channel.name_keywords.some(kw => isKeywordMatch(text, kw));
+    if (channel.all_updates === true || (channel.name_keywords && channel.name_keywords.includes('*'))) {
+      matchedChannels.push(channel);
+      continue;
+    }
+    const isMatch = channel.name_keywords && channel.name_keywords.some(kw => isKeywordMatch(text, kw));
     if (isMatch) {
       matchedChannels.push(channel);
     }
@@ -87,7 +91,19 @@ async function runCheckCycle() {
         console.log(`[Monitor] ➔ Routing to channel: [${channel.category}]`);
 
         if (isReady()) {
-          const destinationJid = channel.channel_id;
+          let destinationJid = channel.channel_id;
+          if (destinationJid && !destinationJid.includes('@')) {
+            try {
+              const meta = await resolveNewsletterInvite(destinationJid);
+              if (meta && meta.id) {
+                destinationJid = meta.id;
+                channel.channel_id = meta.id;
+              }
+            } catch (e) {
+              console.error('[Monitor] Error resolving channel invite:', e.message);
+            }
+          }
+
           if (destinationJid) {
             const govLink = await extractOfficialGovLink(update.detailUrl || update.link, channel.category);
             const cleanUpdate = { ...update, link: govLink };

@@ -1,6 +1,6 @@
 const express = require('express');
 const QRCode = require('qrcode');
-const { isReady, getCurrentQr } = require('./whatsapp');
+const { isReady, getCurrentQr, resolveNewsletterInvite } = require('./whatsapp');
 const { loadHistory } = require('./database');
 const fs = require('fs');
 const path = require('path');
@@ -120,6 +120,21 @@ app.get('/qr', async (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', uptime: process.uptime() });
 });
+
+// 4. Resolve Channel Invite link or code
+app.get('/resolve-channel', async (req, res) => {
+  const code = req.query.code || req.query.url;
+  if (!code) {
+    return res.status(400).json({ error: 'Missing code or url parameter' });
+  }
+  const meta = await resolveNewsletterInvite(code);
+  if (meta) {
+    return res.json({ success: true, id: meta.id, name: meta.name });
+  } else {
+    return res.status(404).json({ success: false, error: 'Could not resolve channel metadata' });
+  }
+});
+
 
 function startServer() {
   app.listen(PORT, () => {

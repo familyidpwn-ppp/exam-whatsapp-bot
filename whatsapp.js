@@ -248,10 +248,30 @@ async function sendToDestination(destinationId, messageText) {
   }
 }
 
+/**
+ * Resolves a WhatsApp channel invite link or code to its JID
+ */
+async function resolveNewsletterInvite(codeOrUrl) {
+  if (!sock) return null;
+  let code = (codeOrUrl || '').trim();
+  if (code.includes('whatsapp.com/channel/')) {
+    code = code.split('whatsapp.com/channel/')[1].replace('/', '').trim();
+  }
+  try {
+    const meta = await sock.newsletterMetadata('invite', code);
+    return meta;
+  } catch (err) {
+    console.error('[WhatsApp] Failed to resolve newsletter:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   initWhatsApp,
   sendToDestination,
   formatMessage,
+  resolveNewsletterInvite,
   isReady: () => isClientReady,
   getCurrentQr: () => currentQrCode
 };
+
