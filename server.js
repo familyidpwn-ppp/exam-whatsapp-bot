@@ -8,12 +8,20 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+function getConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+  } catch (e) {
+    return { channels: [], check_interval_minutes: 10 };
+  }
+}
 
 // 1. Health check & Home page (For UptimeRobot ping)
 app.get('/', (req, res) => {
   const ready = isReady();
   const history = loadHistory();
+  const config = getConfig();
+
 
   res.send(`
     <!DOCTYPE html>
