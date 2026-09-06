@@ -1,39 +1,23 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion
+} = require('@whiskeysockets/baileys');
+const pino = require('pino');
 const qrcodeTerminal = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
 
-let clientInstance = null;
+let sock = null;
 let isClientReady = false;
 let currentQrCode = null;
 
-function getBrowserExecutablePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  if (process.platform === 'linux') {
-    const linuxPaths = [
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-      '/usr/bin/google-chrome-stable',
-      '/usr/bin/google-chrome'
-    ];
-    for (const p of linuxPaths) {
-      if (fs.existsSync(p)) return p;
-    }
-    return undefined;
-  }
+const AUTH_DIR = path.join(__dirname, 'baileys_auth');
 
-  const windowsPaths = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
-  ];
-  for (const p of windowsPaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return undefined;
+// Ensure auth dir exists
+if (!fs.existsSync(AUTH_DIR)) {
+  fs.mkdirSync(AUTH_DIR, { recursive: true });
 }
 
 /**
@@ -62,87 +46,83 @@ function formatMessage(update, channelCategory) {
 }
 
 /**
- * Initializes WhatsApp Web Client with standard proven Docker args
+ * Initializes ultra-lightweight Baileys WhatsApp Client (ZERO Chromium, ~40MB RAM)
  */
-function initWhatsApp(onReadyCallback) {
-  if (clientInstance) {
-    return clientInstance;
-  }
+async function initWhatsApp(onReadyCallback) {
+  if (sock) return sock;
 
-  console.log('[WhatsApp] Initializing WhatsApp Web Client...');
-  const browserPath = getBrowserExecutablePath();
-  console.log('[WhatsApp] Resolved browser executable path:', browserPath);
+  console.log('[WhatsApp] Initializing ultra-lightweight Baileys Engine (No Browser, <50MB RAM)...');
 
-  clientInstance = new Client({
-    authStrategy: new LocalAuth({
-      dataPath: path.join(__dirname, '.wwebjs_auth')
-    }),
-    puppeteer: {
-      executablePath: browserPath,
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu'
-      ]
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    let version = [2, 3000, 1015901307];
+    try {
+      const v = await fetchLatestBaileysVersion();
+      if (v && v.version) version = v.version;
+    } catch (e) {
+      // Use fallback version if network fetch fails
     }
-  });
 
-  clientInstance.on('qr', (qr) => {
-    currentQrCode = qr;
-    console.log('\n[WhatsApp] >>> NEW QR CODE READY <<<');
-    qrcodeTerminal.generate(qr, { small: true });
-  });
+    sock = makeWASocket({
+      version,
+      auth: state,
+      logger: pino({ level: 'silent' }),
+      printQRInTerminal: false,
+      browser: ['Exam Alert Bot', 'Chrome', '124.0.0.0'],
+      syncFullHistory: false
+    });
 
-  clientInstance.on('ready', async () => {
-    isClientReady = true;
-    currentQrCode = null;
-    console.log('\n======================================================');
-    console.log('✅ WhatsApp Client is READY and CONNECTED!');
-    console.log('======================================================\n');
-    if (onReadyCallback) onReadyCallback();
-  });
+    sock.ev.on('creds.update', saveCreds);
 
-  clientInstance.on('authenticated', () => {
-    console.log('[WhatsApp] Authentication successful! Session loaded.');
-    currentQrCode = null;
-  });
+    sock.ev.on('connection.update', (update) => {
+      const { connection, lastDisconnect, qr } = update;
 
-  clientInstance.on('auth_failure', (msg) => {
-    console.error('[WhatsApp] Authentication failed:', msg);
-  });
+      if (qr) {
+        currentQrCode = qr;
+        console.log('\n[WhatsApp] >>> NEW QR CODE READY (SCAN VIA /qr OR TERMINAL) <<<');
+        qrcodeTerminal.generate(qr, { small: true });
+      }
 
-  clientInstance.on('disconnected', (reason) => {
-    console.warn('[WhatsApp] Client was disconnected:', reason);
-    isClientReady = false;
-    setTimeout(() => {
-      console.log('[WhatsApp] Attempting auto-reconnect...');
-      clientInstance.initialize();
-    }, 10000);
-  });
+      if (connection === 'close') {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        console.log(`[WhatsApp] Connection closed (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
+        isClientReady = false;
+        currentQrCode = null;
+        sock = null;
 
-  clientInstance.initialize().catch((err) => {
-    console.error('[WhatsApp] Initialization error:', err);
-  });
+        if (shouldReconnect) {
+          setTimeout(() => initWhatsApp(onReadyCallback), 5000);
+        }
+      } else if (connection === 'open') {
+        console.log('\n======================================================');
+        console.log('✅ WhatsApp Baileys Client is READY and CONNECTED!');
+        console.log('======================================================\n');
+        isClientReady = true;
+        currentQrCode = null;
+        if (onReadyCallback) onReadyCallback();
+      }
+    });
 
-  return clientInstance;
+    return sock;
+  } catch (err) {
+    console.error('[WhatsApp] Baileys Initialization error:', err.message);
+    sock = null;
+    setTimeout(() => initWhatsApp(onReadyCallback), 5000);
+  }
 }
 
 /**
  * Sends a message directly to a WhatsApp Channel or Group ID
  */
 async function sendToDestination(destinationId, messageText) {
-  if (!isClientReady || !clientInstance) {
-    console.warn('[WhatsApp] Cannot send: WhatsApp Client is not ready yet.');
+  if (!isClientReady || !sock) {
+    console.warn('[WhatsApp] Cannot send: Client is not ready yet.');
     return false;
   }
 
   try {
-    await clientInstance.sendMessage(destinationId, messageText);
+    await sock.sendMessage(destinationId, { text: messageText });
     console.log(`[WhatsApp] 🚀 Successfully dispatched alert to: ${destinationId}`);
     return true;
   } catch (err) {
