@@ -107,7 +107,8 @@ async function runCheckCycle() {
           if (destinationJid) {
             const govLink = await extractOfficialGovLink(update.detailUrl || update.link, channel.category);
             const cleanUpdate = { ...update, link: govLink };
-            const message = formatMessage(cleanUpdate, channel.category);
+            const inviteUrl = channel.invite_url || channel.channel_url;
+            const message = formatMessage(cleanUpdate, channel.category, inviteUrl);
             await sendToDestination(destinationJid, message);
             // 3-second natural pause between posts
             await new Promise(r => setTimeout(r, 3000));

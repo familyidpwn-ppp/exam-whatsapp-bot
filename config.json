@@ -6,6 +6,7 @@
       "category": "All Government Vacancy Updates",
       "channel_id": "0029VbDy4Zr1NCrMJCEf3x3r",
       "channel_name": "All Government Vacancy Updates",
+      "invite_url": "https://whatsapp.com/channel/0029VbDy4Zr1NCrMJCEf3x3r",
       "all_updates": true,
       "name_keywords": ["*"]
     },
@@ -13,24 +14,28 @@
       "category": "RPSC & RSSB",
       "channel_id": "120363425195090352@newsletter",
       "channel_name": "RPSC And Rssb News And Updates",
+      "invite_url": "https://whatsapp.com/channel/0029Vb7bSoY7oQhU0weHbN14",
       "name_keywords": ["rpsc", "rssb", "rajasthan", "rsmssb", "reet", "patwari", "vanpal", "cet"]
     },
     {
       "category": "Railway",
       "channel_id": "120363407801728926@newsletter",
       "channel_name": "Railway Daily Updates",
+      "invite_url": "https://whatsapp.com/channel/0029Vb6xaB1F6smsF23K831v",
       "name_keywords": ["railway", "rrb", "rrc", "ntpc", "group d", "alp", "loco pilot", "technician"]
     },
     {
       "category": "SSC",
       "channel_id": "120363424493976619@newsletter",
       "channel_name": "SSC Update",
+      "invite_url": "https://whatsapp.com/channel/0029VbCCoQzA2pLFjzoxg01l",
       "name_keywords": ["ssc", "cgl", "chsl", "mts", "cpo", "gd constable", "stenographer", "selection post", "jht"]
     },
     {
       "category": "Banking",
       "channel_id": "120363425132526828@newsletter",
       "channel_name": "Bank daily Updates",
+      "invite_url": "https://whatsapp.com/channel/0029Vb7kUVGFXUuTOe6oE33C",
       "name_keywords": ["bank", "banking", "ibps", "sbi", "rbi", "po", "clerk", "so", "nabard", "sidbi", "bob", "pnb"]
     }
   ]
