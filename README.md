@@ -1,3 +1,12 @@
+---
+title: Exam Whatsapp Bot
+emoji: 📢
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # 🚀 Exam Updates to WhatsApp Automation Bot
 
 यह बॉट किसी भी वेबसाइट से परीक्षा / रिजल्ट / एडमिट कार्ड के अपडेट्स को ऑटोमैटिक स्क्रैप करके आपके **WhatsApp Group** में भेजता है।

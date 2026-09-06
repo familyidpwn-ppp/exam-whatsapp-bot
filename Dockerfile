@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Install Chromium and system dependencies for headless WhatsApp Web
+# Install Chromium and all system dependencies for headless WhatsApp Web
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -41,15 +41,21 @@ RUN apt-get update && apt-get install -y \
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    PORT=10000
+    PORT=7860
 
-WORKDIR /app
+# Hugging Face non-root user requirement (UID 1000)
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
 
-COPY package*.json ./
+WORKDIR /home/user/app
+
+COPY --chown=user package*.json ./
 RUN npm install --production
 
-COPY . .
+COPY --chown=user . .
 
-EXPOSE 10000
+EXPOSE 7860
 
 CMD ["node", "index.js"]
