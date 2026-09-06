@@ -1,0 +1,30 @@
+{
+  "check_interval_minutes": 10,
+  "website_url": "https://www.sarkariresult.com",
+  "channels": [
+    {
+      "category": "RPSC & RSSB",
+      "channel_id": "120363425195090352@newsletter",
+      "channel_name": "RPSC And Rssb News And Updates",
+      "name_keywords": ["rpsc", "rssb", "rajasthan", "rsmssb", "reet", "patwari", "vanpal", "cet"]
+    },
+    {
+      "category": "Railway",
+      "channel_id": "120363407801728926@newsletter",
+      "channel_name": "Railway Daily Updates",
+      "name_keywords": ["railway", "rrb", "rrc", "ntpc", "group d", "alp", "loco pilot", "technician"]
+    },
+    {
+      "category": "SSC",
+      "channel_id": "120363424493976619@newsletter",
+      "channel_name": "SSC Update",
+      "name_keywords": ["ssc", "cgl", "chsl", "mts", "cpo", "gd constable", "stenographer", "selection post", "jht"]
+    },
+    {
+      "category": "Banking",
+      "channel_id": "120363425132526828@newsletter",
+      "channel_name": "Bank daily Updates",
+      "name_keywords": ["bank", "banking", "ibps", "sbi", "rbi", "po", "clerk", "so", "nabard", "sidbi", "bob", "pnb"]
+    }
+  ]
+}

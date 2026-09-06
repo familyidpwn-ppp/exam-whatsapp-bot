@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: exam-whatsapp-bot
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
