@@ -19,9 +19,7 @@ function getBrowserExecutablePath() {
       '/usr/bin/google-chrome'
     ];
     for (const p of linuxPaths) {
-      if (fs.existsSync(p)) {
-        return p;
-      }
+      if (fs.existsSync(p)) return p;
     }
     return undefined;
   }
@@ -33,9 +31,7 @@ function getBrowserExecutablePath() {
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
   ];
   for (const p of windowsPaths) {
-    if (fs.existsSync(p)) {
-      return p;
-    }
+    if (fs.existsSync(p)) return p;
   }
   return undefined;
 }
@@ -66,7 +62,7 @@ function formatMessage(update, channelCategory) {
 }
 
 /**
- * Initializes WhatsApp Web Client with Ultra-Low Memory Profile (<250MB for Free Cloud)
+ * Initializes WhatsApp Web Client with standard proven Docker args
  */
 function initWhatsApp(onReadyCallback) {
   if (clientInstance) {
@@ -75,6 +71,7 @@ function initWhatsApp(onReadyCallback) {
 
   console.log('[WhatsApp] Initializing WhatsApp Web Client...');
   const browserPath = getBrowserExecutablePath();
+  console.log('[WhatsApp] Resolved browser executable path:', browserPath);
 
   clientInstance = new Client({
     authStrategy: new LocalAuth({
@@ -90,23 +87,14 @@ function initWhatsApp(onReadyCallback) {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu',
-        '--disable-extensions',
-        '--disable-default-apps',
-        '--disable-sync',
-        '--disable-background-networking',
-        '--disable-translate',
-        '--hide-scrollbars',
-        '--metrics-recording-only',
-        '--mute-audio',
-        '--js-flags="--max-old-space-size=256"'
+        '--disable-gpu'
       ]
     }
   });
 
   clientInstance.on('qr', (qr) => {
     currentQrCode = qr;
-    console.log('\n[WhatsApp] New QR Code Generated for Web & Terminal:');
+    console.log('\n[WhatsApp] >>> NEW QR CODE READY <<<');
     qrcodeTerminal.generate(qr, { small: true });
   });
 
@@ -137,7 +125,10 @@ function initWhatsApp(onReadyCallback) {
     }, 10000);
   });
 
-  clientInstance.initialize();
+  clientInstance.initialize().catch((err) => {
+    console.error('[WhatsApp] Initialization error:', err);
+  });
+
   return clientInstance;
 }
 
