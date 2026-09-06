@@ -9,10 +9,67 @@ const HEADERS = {
   'Upgrade-Insecure-Requests': '1'
 };
 
+const OFFICIAL_GOV_PORTALS = {
+  'SSC': 'https://ssc.gov.in',
+  'Railway': 'https://rrbcdg.gov.in',
+  'RPSC & RSSB': 'https://rpsc.rajasthan.gov.in',
+  'Banking': 'https://ibps.in'
+};
+
 function generateNoticeId(title, link) {
   const hash = crypto.createHash('sha256');
   hash.update((link || '').trim().toLowerCase() + '|' + (title || '').trim().toLowerCase());
   return hash.digest('hex').substring(0, 16);
+}
+
+/**
+ * Removes any third-party/aggregator branding from titles
+ */
+function cleanTitle(rawTitle) {
+  return rawTitle
+    .replace(/sarkari\s*result[s]?(\.com)?/gi, '')
+    .replace(/\|\s*sarkari\s*result/gi, '')
+    .replace(/www\.sarkariresult\.com/gi, '')
+    .replace(/[|:-]\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Extracts official government link from detail page (Apply online, Notification PDF, Official site)
+ */
+async function extractOfficialGovLink(detailUrl, channelCategory) {
+  const fallback = OFFICIAL_GOV_PORTALS[channelCategory] || 'https://www.india.gov.in';
+
+  if (!detailUrl || !detailUrl.includes('sarkariresult')) {
+    return detailUrl || fallback;
+  }
+
+  try {
+    const res = await axios.get(detailUrl, { headers: HEADERS, timeout: 8000 });
+    const $ = cheerio.load(res.data);
+    let officialLink = null;
+    let officialWebsite = null;
+    let pdfLink = null;
+
+    $('table tr').each((_, tr) => {
+      const label = $(tr).find('td').first().text().trim().toLowerCase();
+      const href = $(tr).find('a').attr('href');
+      if (!href || href.startsWith('javascript') || href.includes('sarkariresult.com') || href.includes('t.me') || href.includes('play.google.com')) return;
+
+      if (label.includes('apply online') || label.includes('download admit') || label.includes('download result') || label.includes('answer key')) {
+        if (!officialLink) officialLink = href;
+      } else if (label.includes('official website')) {
+        if (!officialWebsite) officialWebsite = href;
+      } else if (label.includes('notification') || label.includes('syllabus')) {
+        if (!pdfLink) pdfLink = href;
+      }
+    });
+
+    return officialLink || officialWebsite || pdfLink || fallback;
+  } catch (err) {
+    return fallback;
+  }
 }
 
 /**
@@ -56,22 +113,21 @@ function detectDetailedCategory(title, sectionName) {
 }
 
 /**
- * Scrapes all sections from SarkariResult
+ * Scrapes all sections and cleans titles
  */
 function parseSarkariResult($, baseUrl) {
   const updates = [];
   const seenUrls = new Set();
 
-  // 1. Scrape all lists in .sarkari-quick-list (Result, Admit Card, Latest Job, Answer Key, Syllabus, Admission, Important)
   $('ul.sarkari-quick-list').each((_, ul) => {
     const parentContainer = $(ul).closest('div');
     const rawSection = parentContainer.find('h2, h3, h4, .box-title, strong, font').first().text().trim() || 'Exam Notice';
 
     $(ul).find('li a').each((_, a) => {
-      const title = $(a).text().trim();
+      const rawTitle = $(a).text().trim();
       let href = $(a).attr('href');
 
-      if (!title || !href || href.startsWith('javascript') || href.length < 5) return;
+      if (!rawTitle || !href || href.startsWith('javascript') || href.length < 5) return;
       if (!href.startsWith('http')) {
         try { href = new URL(href, baseUrl).href; } catch(e) { return; }
       }
@@ -79,12 +135,14 @@ function parseSarkariResult($, baseUrl) {
       if (seenUrls.has(href)) return;
       seenUrls.add(href);
 
+      const title = cleanTitle(rawTitle);
       const category = detectDetailedCategory(title, rawSection);
 
       updates.push({
         id: generateNoticeId(title, href),
-        title: title.replace(/\s+/g, ' '),
-        link: href,
+        title: title,
+        detailUrl: href,
+        link: href, // Will be resolved to direct official gov link when dispatching
         category: category,
         rawSection: rawSection,
         foundAt: new Date().toISOString()
@@ -92,20 +150,21 @@ function parseSarkariResult($, baseUrl) {
     });
   });
 
-  // 2. Scrape job-grid / job-box (Highlighted top vacancies)
   $('.job-box a, .job-grid a').each((_, a) => {
-    const title = $(a).text().trim();
+    const rawTitle = $(a).text().trim();
     let href = $(a).attr('href');
-    if (!title || !href || href.startsWith('javascript') || href.length < 5) return;
+    if (!rawTitle || !href || href.startsWith('javascript') || href.length < 5) return;
     if (!href.startsWith('http')) {
       try { href = new URL(href, baseUrl).href; } catch(e) { return; }
     }
     if (seenUrls.has(href)) return;
     seenUrls.add(href);
 
+    const title = cleanTitle(rawTitle);
     updates.push({
       id: generateNoticeId(title, href),
-      title: title.replace(/\s+/g, ' '),
+      title: title,
+      detailUrl: href,
       link: href,
       category: detectDetailedCategory(title, 'New Vacancy Highlight'),
       rawSection: 'Latest Job Highlight',
@@ -113,20 +172,21 @@ function parseSarkariResult($, baseUrl) {
     });
   });
 
-  // 3. Scrape breaking marquee announcements
   $('marquee a').each((_, a) => {
-    const title = $(a).text().trim();
+    const rawTitle = $(a).text().trim();
     let href = $(a).attr('href');
-    if (!title || !href || href.startsWith('javascript') || href.length < 5) return;
+    if (!rawTitle || !href || href.startsWith('javascript') || href.length < 5) return;
     if (!href.startsWith('http')) {
       try { href = new URL(href, baseUrl).href; } catch(e) { return; }
     }
     if (seenUrls.has(href)) return;
     seenUrls.add(href);
 
+    const title = cleanTitle(rawTitle);
     updates.push({
       id: generateNoticeId(title, href),
-      title: title.replace(/\s+/g, ' '),
+      title: title,
+      detailUrl: href,
       link: href,
       category: detectDetailedCategory(title, 'Breaking Notice'),
       rawSection: 'Breaking Announcement',
@@ -138,18 +198,19 @@ function parseSarkariResult($, baseUrl) {
 }
 
 /**
- * Generic notice board scraper for colleges, boards, other sites
+ * Generic notice board scraper
  */
 function parseGenericNoticeBoard($, baseUrl) {
   const updates = [];
   const seen = new Set();
 
   $('a').each((_, el) => {
-    const text = $(el).text().trim();
+    const rawText = $(el).text().trim();
     let href = $(el).attr('href');
-    if (!href || href.startsWith('javascript') || href.length < 5 || text.length < 6) return;
+    if (!href || href.startsWith('javascript') || href.length < 5 || rawText.length < 6) return;
 
-    const lower = text.toLowerCase();
+    const title = cleanTitle(rawText);
+    const lower = title.toLowerCase();
     if (
       lower.includes('exam') ||
       lower.includes('admit') ||
@@ -172,10 +233,11 @@ function parseGenericNoticeBoard($, baseUrl) {
       seen.add(href);
 
       updates.push({
-        id: generateNoticeId(text, href),
-        title: text.replace(/\s+/g, ' '),
+        id: generateNoticeId(title, href),
+        title: title,
+        detailUrl: href,
         link: href,
-        category: detectDetailedCategory(text, 'Official Notice'),
+        category: detectDetailedCategory(title, 'Official Notice'),
         rawSection: 'General Notice',
         foundAt: new Date().toISOString()
       });
@@ -191,7 +253,7 @@ async function fetchExamUpdates(targetUrl, retries = 3) {
   while (attempt < retries) {
     try {
       attempt++;
-      console.log(`[Scraper] Fetching all updates from ${targetUrl} (Attempt ${attempt}/${retries})...`);
+      console.log(`[Scraper] Fetching updates from source (Attempt ${attempt}/${retries})...`);
 
       const response = await axios.get(targetUrl, {
         headers: HEADERS,
@@ -208,10 +270,10 @@ async function fetchExamUpdates(targetUrl, retries = 3) {
         updates = parseGenericNoticeBoard($, targetUrl);
       }
 
-      console.log(`[Scraper] Successfully extracted ${updates.length} comprehensive updates.`);
+      console.log(`[Scraper] Successfully extracted ${updates.length} clean updates.`);
       return updates;
     } catch (err) {
-      console.error(`[Scraper] Error fetching ${targetUrl}: ${err.message}`);
+      console.error(`[Scraper] Error fetching updates: ${err.message}`);
       if (attempt >= retries) return [];
       await new Promise((res) => setTimeout(res, 2000 * attempt));
     }
@@ -223,5 +285,7 @@ async function fetchExamUpdates(targetUrl, retries = 3) {
 module.exports = {
   fetchExamUpdates,
   generateNoticeId,
-  detectDetailedCategory
+  detectDetailedCategory,
+  extractOfficialGovLink,
+  cleanTitle
 };

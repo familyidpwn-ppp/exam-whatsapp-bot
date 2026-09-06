@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { initWhatsApp, sendToDestination, formatMessage, isReady } = require('./whatsapp');
-const { fetchExamUpdates } = require('./scraper');
+const { fetchExamUpdates, extractOfficialGovLink } = require('./scraper');
 const { isUpdateNew, markUpdateAsSeen, loadHistory } = require('./database');
 const { startServer } = require('./server');
 
@@ -89,7 +89,9 @@ async function runCheckCycle() {
         if (isReady()) {
           const destinationJid = channel.channel_id;
           if (destinationJid) {
-            const message = formatMessage(update, channel.category);
+            const govLink = await extractOfficialGovLink(update.detailUrl || update.link, channel.category);
+            const cleanUpdate = { ...update, link: govLink };
+            const message = formatMessage(cleanUpdate, channel.category);
             await sendToDestination(destinationJid, message);
             // 3-second natural pause between posts
             await new Promise(r => setTimeout(r, 3000));
