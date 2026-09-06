@@ -15,33 +15,150 @@ let currentQrCode = null;
 
 const AUTH_DIR = path.join(__dirname, 'baileys_auth');
 
-// Ensure auth dir exists
 if (!fs.existsSync(AUTH_DIR)) {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 }
 
 /**
- * Formats a clean, high-visibility WhatsApp update message
+ * Rich, High-Visibility WhatsApp Message Formatter for all exam categories
  */
 function formatMessage(update, channelCategory) {
-  const categoryIcon = {
-    'Admit Card': '🎫',
-    'Result': '🏆',
-    'Latest Job': '💼',
-    'Answer Key': '🔑',
-    'Syllabus': '📚',
-    'Exam Notice': '📢'
-  }[update.category] || '📢';
+  const cat = update.category || 'Exam Notice';
+  const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
+  // 1. Admit Card & Exam City Slip
+  if (cat.includes('Admit Card') || cat.includes('City')) {
+    return (
+      `🎫 *ADMIT CARD OUT: एडमिट कार्ड जारी!* 🎫\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *परीक्षा:* *${update.title}*\n\n` +
+      `🗓️ *अपडेट स्थिति:* \n` +
+      `  ├ 📍 *Status:* एडमिट कार्ड / एग्जाम सिटी लिंक एक्टिव\n` +
+      `  └ ⏰ *समय:* ${timeStr}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डाउनलोड लिंक्स:* \n` +
+      `  👉 *डायरेक्ट डाउनलोड करें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_⚠️ परीक्षा केंद्र पर समय से पहुँचना और ऑरिजिनल ID ले जाना अनिवार्य है!_\n` +
+      `_📢 सबसे पहले अपडेट के लिए चैनल से जुड़े रहें!_`
+    );
+  }
+
+  // 2. Exam Result & Cutoff
+  if (cat.includes('Result') || cat.includes('Cutoff') || cat.includes('Merit')) {
+    return (
+      `🏆 *RESULT DECLARED: परीक्षा परिणाम जारी!* 🏆\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *परीक्षा:* *${update.title}*\n\n` +
+      `📊 *अपडेट विवरण:*\n` +
+      `  ├ 🟢 *Status:* परिणाम / कट-ऑफ मार्क्स जारी\n` +
+      `  └ ⏰ *घोषित समय:* ${timeStr}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *चेक करने के लिए लिंक्स:* \n` +
+      `  👉 *अपना रिजल्ट / मेरिट लिस्ट देखें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_🎉 सभी सफल अभ्यर्थियों को हार्दिक बधाई एवं शुभकामनाएँ!_\n` +
+      `_📢 अपने दोस्तों के साथ तुरंत शेयर करें!_`
+    );
+  }
+
+  // 3. Answer Key & Objections
+  if (cat.includes('Answer Key') || cat.includes('Objection')) {
+    return (
+      `🔑 *ANSWER KEY: उत्तर कुंजी जारी!* 🔑\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *परीक्षा:* *${update.title}*\n\n` +
+      `📝 *विवरण:*\n` +
+      `  ├ 🟢 *Status:* आंसर की और रिस्पॉन्स शीट लाइव\n` +
+      `  └ ⏰ *जारी समय:* ${timeStr}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डायरेक्ट लिंक्स:* \n` +
+      `  👉 *आंसर की देखें और आपत्ति दर्ज करें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_⚠️ समय रहते अपनी रिस्पॉन्स शीट डाउनलोड कर लें!_`
+    );
+  }
+
+  // 4. Syllabus & Exam Pattern
+  if (cat.includes('Syllabus')) {
+    return (
+      `📚 *NEW SYLLABUS: नया सिलेबस जारी!* 📚\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *परीक्षा:* *${update.title}*\n\n` +
+      `📖 *विवरण:* नया विस्तृत सिलेबस और एग्जाम पैटर्न\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डाउनलोड लिंक:* \n` +
+      `  📥 *पूरा सिलेबस PDF डाउनलोड करें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_💡 परीक्षा की तैयारी नए सिलेबस के अनुसार ही शुरू करें!_`
+    );
+  }
+
+  // 5. Skill / Typing Test / Physical Test
+  if (cat.includes('Typing') || cat.includes('Physical') || cat.includes('Skill')) {
+    return (
+      `🏃‍♂️ *SKILL / TYPING TEST: टेस्ट एडमिट कार्ड!* 🏃‍♂️\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *इवेंट:* *${update.title}*\n\n` +
+      `🎯 *विवरण:* दक्षता परीक्षा / टाइपिंग टेस्ट शेड्यूल व एडमिट कार्ड\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डाउनलोड लिंक:* \n` +
+      `  👉 *अपना स्किल टेस्ट एडमिट कार्ड देखें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_📢 सेंटर पर समय से 1 घंटा पहले पहुँचना आवश्यक है!_`
+    );
+  }
+
+  // 6. Date Extended / Correction Window
+  if (cat.includes('Date Extended') || cat.includes('Correction') || cat.includes('Reopen')) {
+    return (
+      `⏳ *IMPORTANT ALERT: तारीख बढ़ी / करेक्शन शुरू!* ⏳\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *सूचना:* *${update.title}*\n\n` +
+      `📢 *विवरण:* फॉर्म भरने की तारीख बढ़ाई गई अथवा सुधार विंडो ओपन\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डायरेक्ट लिंक:* \n` +
+      `  👉 *ऑनलाइन फॉर्म / करेक्शन यहाँ करें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_💡 जिन्होंने फॉर्म नहीं भरा या सुधार करना है, तुरंत पूरा करें!_`
+    );
+  }
+
+  // 7. Exam Date Notice / Postponed
+  if (cat.includes('Exam Date') || cat.includes('Notice')) {
+    return (
+      `🚨 *EXAM DATE NOTICE: परीक्षा कार्यक्रम जारी!* 🚨\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+      `📌 *परीक्षा:* *${update.title}*\n\n` +
+      `📅 *अपडेट:* परीक्षा तिथि घोषित अथवा नया संशोधित कार्यक्रम\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⚡ *डायरेक्ट लिंक:* \n` +
+      `  📄 *ऑफिशियल परीक्षा नोटिस देखें:* ${update.link}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_📢 यह सूचना तुरंत अपने सभी साथी छात्रों तक पहुँचाएँ!_`
+    );
+  }
+
+  // 8. Default: New Vacancy / Online Form
   return (
-    `*${categoryIcon} NEW ${channelCategory.toUpperCase()} UPDATE!* \n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📌 *Topic:* ${update.title}\n` +
-    `🏷️ *Section:* ${update.category || 'General'}\n` +
-    `🔗 *Direct Link:* ${update.link}\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `_⏰ Received at: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}_\n` +
-    `_🤖 Auto-alert via Exam Bot_`
+    `🔥 *NEW VACANCY: नई सरकारी भर्ती जारी!* 🔥\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `🏢 *कैटेगरी:* *${channelCategory}*\n` +
+    `📌 *पद / भर्ती:* *${update.title}*\n\n` +
+    `📋 *सेक्शन:* *${update.category || 'Latest Online Form'}*\n` +
+    `⏰ *समय:* ${timeStr}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `⚡ *डायरेक्ट लिंक्स:* \n` +
+    `  👉 *विस्तृत नोटिफिकेशन और ऑनलाइन अप्लाई:* ${update.link}\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `_📢 सबसे पहले सरकारी जॉब्स अपडेट पाने के लिए चैनल से जुड़े रहें!_`
   );
 }
 
